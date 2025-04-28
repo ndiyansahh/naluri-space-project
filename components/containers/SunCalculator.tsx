@@ -15,13 +15,6 @@ export default function SunCalculator() {
 
   const radius = 695700;
 
-  function formatNumber(num: number): string {
-    return num.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
-
   const recalculateCircumference = async () => {
     setIsLoading(true);
     try {
