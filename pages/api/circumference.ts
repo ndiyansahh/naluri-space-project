@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { SUN_RADIUS_KM } from '@/utils/constants';
 import Decimal from "decimal.js";
 import { calculatePiEfficient } from "@/utils/pi-efficient";
 import { calculatePiOptimized } from "@/utils/pi-optimized";
@@ -49,7 +50,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (reset === "true") {
     store.precision = 0;
     store.pi = new Decimal(3);
-    const circumference = store.pi.mul(2).mul(new Decimal(695700));
+    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
 
     return res.status(200).json({
       reset: true,
@@ -59,7 +60,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
   if (increment === "false") {
-    const circumference = store.pi.mul(2).mul(new Decimal(695700));
+    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
 
     return res.status(200).json({
       pi: store.pi.toFixed(store.precision),
@@ -76,7 +77,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ? calculatePiOptimized(store.precision)
         : calculatePiEfficient(store.precision);
 
-    const circumference = store.pi.mul(2).mul(new Decimal(695700));
+    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
     console.log(`[π API] mode=${mode} precision=${store.precision}`);
 
     return res.status(200).json({

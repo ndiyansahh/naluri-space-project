@@ -1,0 +1,1 @@
+export const SUN_RADIUS_KM = 695700;

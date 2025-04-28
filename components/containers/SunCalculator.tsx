@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CircumferenceDisplay } from "@/components/ui/CircumferenceDisplay";
 import { CircumferenceButton } from "@/components/ui/CircumferenceButton";
+import { SUN_RADIUS_KM } from '@/utils/constants';
 
 export default function SunCalculator() {
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -13,7 +14,7 @@ export default function SunCalculator() {
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"efficient" | "optimized">("efficient");
 
-  const radius = 695700;
+  const radius = SUN_RADIUS_KM;
 
   const recalculateCircumference = async () => {
     setIsLoading(true);
