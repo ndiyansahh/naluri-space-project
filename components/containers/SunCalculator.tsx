@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { CircumferenceDisplay } from "@/components/ui/CircumferenceDisplay";
 import { CircumferenceButton } from "@/components/ui/CircumferenceButton";
-import { SUN_RADIUS_KM } from '@/utils/constants';
+import { SUN_RADIUS_KM, PUBLIC_API_KEY } from '@/utils/constants';
 
 export default function SunCalculator() {
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
   const [piValue, setPiValue] = useState("3.14");
-  const [circumference, setCircumference] = useState<number>(2 * 3.14 * 695700);
+  const [circumference, setCircumference] = useState<number>(2 * 3.14 * SUN_RADIUS_KM);
   const [iterations, setIterations] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"efficient" | "optimized">("efficient");
@@ -19,7 +19,9 @@ export default function SunCalculator() {
   const recalculateCircumference = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/circumference?mode=${mode}`);
+      const res = await fetch(`/api/circumference?mode=${mode}`, {
+        headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
+      });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
 
@@ -39,14 +41,18 @@ export default function SunCalculator() {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2500);
       setTimeout(() => setToastMessage(""), 3000);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const resetIterations = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/circumference?mode=${mode}&reset=true`);
+      const res = await fetch(`
+        /api/circumference?mode=${mode}&reset=true`, {
+        headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
+      });
       if (!res.ok) throw new Error("Failed to reset");
       const data = await res.json();
 
@@ -64,56 +70,64 @@ export default function SunCalculator() {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2500);
       setTimeout(() => setToastMessage(""), 3000);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleModeChange = async (selectedMode: "efficient" | "optimized") => {
     setIsLoading(true);
     setMode(selectedMode);
 
-    const resp = await fetch(
-      `/api/circumference?mode=${selectedMode}&debug=true`
-    );
-    const data = (await resp.json()) as {
-      store: Record<string, { pi: string; precision: number }>;
-    };
+    try {
+      const resp = await fetch(
+        `/api/circumference?mode=${selectedMode}&debug=true`,
+        {
+          headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
+        }
+      );
+      if (!resp.ok) throw new Error("Failed to fetch debug");
+      const data = (await resp.json()) as { store: Record<string, { pi: string; precision: number }> };
 
-    const entry = data.store[selectedMode];
-    setPiValue(entry.pi);
-    setIterations(entry.precision);
-    setCircumference(2 * parseFloat(entry.pi) * radius);
-
-    setIsLoading(false);
+      const entry = data.store[selectedMode];
+      setPiValue(entry.pi);
+      setIterations(entry.precision);
+      setCircumference(2 * parseFloat(entry.pi) * radius);
+    } catch (err) {
+      console.error(err);
+      setToastMessage("Failed to switch mode");
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
+      setTimeout(() => setToastMessage(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="w-full max-w-md bg-white rounded-2xl shadow-lg">
       <div className="p-8 flex flex-col items-center">
-        {/* Toast */}
         {toastMessage && (
           <div
             role="status"
             aria-live="polite"
-            className={` bg-naluri-teal fixed top-6 right-6 text-white py-2 px-4 rounded-lg shadow-lg transition-all duration-500 ease-in-out transform z-50 ${
-              showToast
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 -translate-y-4"
+            className={`bg-naluri-teal fixed top-6 right-6 text-white py-2 px-4 rounded-lg shadow-lg transition-all duration-500 ease-in-out transform z-50 ${
+              showToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
             }`}
           >
             {toastMessage}
           </div>
         )}
-        <h1 className="text-2xl font-medium  text-teal-800 text-center mb-10">
+        <h1 className="text-2xl font-medium text-teal-800 text-center mb-10">
           Sun Circumference
         </h1>
 
-        <div className="flex justify-center gap-4 w-full">
+        <div className="flex justify-center gap-4 w-full mb-6">
           <button
             onClick={() => handleModeChange("efficient")}
             className={`flex-1 px-4 py-2 rounded-lg border font-medium transition ${
               mode === "efficient"
-                ? "bg-naluri-teal text-white bg-naluri-teal hover:bg-naluri-teal"
+                ? "bg-naluri-teal text-white"
                 : "bg-white text-black hover:bg-teal-50"
             }`}
           >
@@ -123,17 +137,19 @@ export default function SunCalculator() {
             onClick={() => handleModeChange("optimized")}
             className={`flex-1 px-4 py-2 rounded-lg border font-medium transition ${
               mode === "optimized"
-                ? "bg-naluri-teal text-white bg-naluri-teal bg-naluri-teal"
+                ? "bg-naluri-teal text-white"
                 : "bg-white text-black hover:bg-teal-50"
             }`}
           >
             Optimized
           </button>
         </div>
+
         <CircumferenceDisplay
           circumference={circumference}
           isLoading={isLoading}
         />
+
         <div className="flex mb-3 w-full justify-around text-gray-700 text-sm">
           <div className="text-center">
             <p className="font-semibold text-teal-600">Radius</p>
@@ -148,11 +164,11 @@ export default function SunCalculator() {
             <p className="font-bold">{iterations}</p>
           </div>
         </div>
+
         <div className="flex flex-col w-full gap-4">
           <CircumferenceButton
             onClick={recalculateCircumference}
             isLoading={isLoading}
-            aria-busy={isLoading}
           />
           <button
             onClick={resetIterations}
