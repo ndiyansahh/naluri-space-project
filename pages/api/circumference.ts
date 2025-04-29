@@ -9,30 +9,93 @@ import {
   shouldEnforceAuth,
 } from "@/utils/constants";
 
-type StoreEntry = { pi: Big; precision: number };
+import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 
-const piStore: Record<"efficient" | "optimized", StoreEntry> = {
-  efficient: { pi: new Big(3), precision: 0 },
-  optimized: { pi: new Big(3), precision: 0 },
+const upstashRedis = new Redis({
+  url: process.env.KV_REST_API_URL || "",
+  token: process.env.KV_REST_API_TOKEN || "",
+});
+
+const getRedisClient = () => {
+  return process.env.VERCEL ? kv : upstashRedis;
 };
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+const redis = getRedisClient();
+
+type MemoryStoreEntry = { pi: Big; precision: number };
+
+type KVStoreEntry = { pi: string; precision: number };
+
+// Initial values
+const initialValues = {
+  pi: new Big(3),
+  precision: 0,
+};
+
+// In-memory fallback store
+const memoryStore: Record<"efficient" | "optimized", MemoryStoreEntry> = {
+  efficient: {
+    pi: new Big(initialValues.pi),
+    precision: initialValues.precision,
+  },
+  optimized: {
+    pi: new Big(initialValues.pi),
+    precision: initialValues.precision,
+  },
+};
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   const { mode: rawMode, reset, debug, increment } = req.query;
 
-  // debug endpoint
+  // Debug endpoint
   if (debug === "true" && process.env.NODE_ENV !== "production") {
-    return res.status(200).json({
-      store: {
-        efficient: {
-          precision: piStore.efficient.precision,
-          pi: piStore.efficient.pi.toString(),
+    try {
+      const efficientStore = (await redis.get(
+        "piStore:efficient"
+      )) as KVStoreEntry;
+      const optimizedStore = (await redis.get(
+        "piStore:optimized"
+      )) as KVStoreEntry;
+
+      return res.status(200).json({
+        store: {
+          efficient: {
+            precision: efficientStore
+              ? efficientStore.precision
+              : memoryStore.efficient.precision,
+            pi: efficientStore
+              ? efficientStore.pi
+              : memoryStore.efficient.pi.toString(),
+          },
+          optimized: {
+            precision: optimizedStore
+              ? optimizedStore.precision
+              : memoryStore.optimized.precision,
+            pi: optimizedStore
+              ? optimizedStore.pi
+              : memoryStore.optimized.pi.toString(),
+          },
         },
-        optimized: {
-          precision: piStore.optimized.precision,
-          pi: piStore.optimized.pi.toString(),
+      });
+    } catch (err) {
+      console.log("Redis error in debug endpoint:", err);
+      return res.status(200).json({
+        store: {
+          efficient: {
+            precision: memoryStore.efficient.precision,
+            pi: memoryStore.efficient.pi.toString(),
+          },
+          optimized: {
+            precision: memoryStore.optimized.precision,
+            pi: memoryStore.optimized.pi.toString(),
+          },
         },
-      },
-    });
+      });
+    }
   }
 
   const isDirectApiAccess =
@@ -95,12 +158,41 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: `Invalid mode: ${rawMode}` });
   }
 
-  const store = piStore[mode];
+  const storeKey = `piStore:${mode}`;
+  let kvStore: KVStoreEntry | null = null;
+  let store = memoryStore[mode];
 
-  // Handle reset request
+  try {
+    kvStore = (await redis.get(storeKey)) as KVStoreEntry;
+
+    if (kvStore) {
+      store = {
+        precision: kvStore.precision,
+        pi: new Big(kvStore.pi),
+      };
+    } else {
+      await redis.set(storeKey, {
+        pi: store.pi.toString(),
+        precision: store.precision,
+      });
+    }
+  } catch (err) {
+    console.log("Redis error, using memory store:", err);
+  }
+
   if (reset === "true") {
     store.precision = 0;
     store.pi = new Big(3);
+
+    try {
+      await redis.set(storeKey, {
+        pi: "3",
+        precision: 0,
+      });
+    } catch (err) {
+      console.log("Redis reset error:", err);
+    }
+
     const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
     return res.status(200).json({
       reset: true,
@@ -124,10 +216,25 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   // Handle increment request
   try {
     store.precision += 1;
+
     store.pi =
       mode === "optimized"
         ? calculatePiOptimized(store.precision)
         : calculatePiEfficient(store.precision);
+
+    // Update memory store
+    memoryStore[mode] = store;
+
+    // Update Redis store
+    try {
+      await redis.set(storeKey, {
+        pi: store.pi.toString(),
+        precision: store.precision,
+      });
+    } catch (kvErr) {
+      console.log("Redis update error:", kvErr);
+      // Continue even if Redis update fails
+    }
 
     const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
 
