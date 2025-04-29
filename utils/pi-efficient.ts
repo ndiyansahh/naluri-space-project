@@ -1,5 +1,4 @@
-import Big from 'big.js';
-
+import Big from "big.js";
 
 export function calculatePiEfficient(iterations: number): Big {
   let pi = new Big(0);
@@ -16,4 +15,3 @@ export function calculatePiEfficient(iterations: number): Big {
 
   return pi;
 }
-

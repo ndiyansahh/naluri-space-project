@@ -1,15 +1,14 @@
-// hooks/useCircumference.ts
-
-import useSWR from 'swr';
-import { PUBLIC_API_KEY, SUN_RADIUS_KM } from '@/utils/constants';
+import useSWR from "swr";
+import { PUBLIC_API_KEY, SUN_RADIUS_KM } from "@/utils/constants";
 
 // fetcher for SWR
 const fetcher = (url: string) =>
-  fetch(url, { headers: { Authorization: `Bearer ${PUBLIC_API_KEY}` } })
-    .then(res => {
-      if (!res.ok) throw new Error('Network error');
+  fetch(url, { headers: { Authorization: `Bearer ${PUBLIC_API_KEY}` } }).then(
+    (res) => {
+      if (!res.ok) throw new Error("Network error");
       return res.json();
-    });
+    }
+  );
 
 interface CircumferenceData {
   pi: string;
@@ -18,18 +17,14 @@ interface CircumferenceData {
   reset?: boolean;
 }
 
-export function useCircumference(mode: 'efficient' | 'optimized') {
+export function useCircumference(mode: "efficient" | "optimized") {
   const key = `/api/circumference?mode=${mode}&increment=false`;
 
-  const { data, error, mutate } = useSWR<CircumferenceData>(
-    key,
-    fetcher,
-    {
-      dedupingInterval: 60000,
-      revalidateOnFocus: false,
-      onError: err => console.error('useCircumference error:', err),
-    }
-  );
+  const { data, error, mutate } = useSWR<CircumferenceData>(key, fetcher, {
+    dedupingInterval: 60000,
+    revalidateOnFocus: false,
+    onError: (err) => console.error("useCircumference error:", err),
+  });
 
   // fallback circumference when no data yet
   const fallbackCircumference = 2 * 3.14 * SUN_RADIUS_KM;

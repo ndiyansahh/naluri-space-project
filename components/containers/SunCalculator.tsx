@@ -3,19 +3,16 @@
 import { useState } from "react";
 import { CircumferenceDisplay } from "@/components/ui/CircumferenceDisplay";
 import { CircumferenceButton } from "@/components/ui/CircumferenceButton";
-import { useCircumference } from '@/hooks/useCircumference';
+import { useCircumference } from "@/hooks/useCircumference";
 
 export default function SunCalculator() {
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"efficient" | "optimized">("efficient");
-
-  // Custom hook for fetching and caching
   const { data, mutate, fallbackCircumference } = useCircumference(mode);
 
-  // Derive display values
-  const piValue = data?.pi ?? '—';
+  const piValue = data?.pi ?? "—";
   const iterations = data?.currentIterations ?? 0;
   const circumference = data?.circumference
     ? parseFloat(data.circumference)
@@ -32,7 +29,9 @@ export default function SunCalculator() {
     setIsLoading(true);
     try {
       await mutate();
-      showToastMessage(`Successfully recalculated at iteration ${iterations + 1}!`);
+      showToastMessage(
+        `Successfully recalculated at iteration ${iterations + 1}!`
+      );
     } catch (err) {
       console.error(err);
       showToastMessage("Failed to recalculate");
@@ -66,7 +65,9 @@ export default function SunCalculator() {
             role="status"
             aria-live="polite"
             className={`bg-naluri-teal fixed top-6 right-6 text-white py-2 px-4 rounded-lg shadow-lg transition-all duration-500 ease-in-out transform z-50 ${
-              showToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+              showToast
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-4"
             }`}
           >
             {toastMessage}
@@ -107,7 +108,9 @@ export default function SunCalculator() {
         <div className="flex mb-3 w-full justify-around text-gray-700 text-sm">
           <div className="text-center">
             <p className="font-semibold text-teal-600">Radius</p>
-            <p className="font-bold">{fallbackCircumference.toLocaleString()} km</p>
+            <p className="font-bold">
+              {fallbackCircumference.toLocaleString()} km
+            </p>
           </div>
           <div className="text-center max-w-[120px]">
             <p className="font-semibold text-teal-600">Pi Value</p>
