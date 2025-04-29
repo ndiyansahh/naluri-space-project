@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import Decimal from 'decimal.js';
+import Big from 'big.js';
 import { calculatePiEfficient } from '@/utils/pi-efficient';
 import { calculatePiOptimized } from '@/utils/pi-optimized';
 import { SUN_RADIUS_KM, API_SECRET_KEY } from '@/utils/constants';
 
-type StoreEntry = { pi: Decimal; precision: number };
+type StoreEntry = { pi: Big; precision: number };
 
 const piStore: Record<'efficient' | 'optimized', StoreEntry> = {
-  efficient:  { pi: new Decimal(3), precision: 0 },
-  optimized: { pi: new Decimal(3), precision: 0 },
+  efficient:  { pi: new Big(3), precision: 0 },
+  optimized: { pi: new Big(3), precision: 0 },
 };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -46,8 +46,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (reset === 'true') {
     store.precision = 0;
-    store.pi = new Decimal(3);
-    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
+    store.pi = new Big(3);
+    const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
     return res.status(200).json({
       reset: true,
       pi: store.pi.toFixed(store.precision),
@@ -57,7 +57,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (increment === 'false') {
-    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
+    const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
     return res.status(200).json({
       pi: store.pi.toFixed(store.precision),
       currentIterations: store.precision,
@@ -65,7 +65,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       incremented: false,
     });
   }
-  
+
   try {
     store.precision += 1;
     store.pi =
@@ -73,14 +73,21 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ? calculatePiOptimized(store.precision)
         : calculatePiEfficient(store.precision);
 
-    const circumference = store.pi.mul(2).mul(new Decimal(SUN_RADIUS_KM));
+    const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
+
+    res.setHeader(
+      'Cache-Control',
+      's-maxage=60, stale-while-revalidate=300'
+    );
+
+    
     return res.status(200).json({
       pi: store.pi.toFixed(store.precision),
       currentIterations: store.precision,
       circumference: circumference.toFixed(2),
       incremented: true,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[π API] error computing π:', err);
     return res.status(500).json({ error: 'Failed to compute π' });
   }

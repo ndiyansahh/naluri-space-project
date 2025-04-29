@@ -1,9 +1,8 @@
-"use client";
-
 import { Navbar } from "@/components/Layout/Navbar";
 import { Section } from "@/components/Layout/Section";
 import { Footer } from "@/components/Layout/Footer";
-import SunCalculator from "@/components/containers/SunCalculator";
+import SunCalculatorLoader from "@/components/containers/SunCalculatorLauder";
+
 
 export default function Home() {
   return (
@@ -11,7 +10,8 @@ export default function Home() {
       <Navbar />
       <Section />
       <div className="flex justify-center -mt-12 px-4 relative z-10">
-        <SunCalculator />
+        <SunCalculatorLoader />
+
       </div>
       <div className="flex-grow"></div>
       <Footer />

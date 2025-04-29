@@ -1,14 +1,15 @@
-import Decimal from 'decimal.js';
+import Big from 'big.js';
 
-export function calculatePiEfficient(iterations: number): Decimal {
-  let pi = new Decimal(0);
-  let divisor = new Decimal(1);
+
+export function calculatePiEfficient(iterations: number): Big {
+  let pi = new Big(0);
+  let divisor = new Big(1);
 
   for (let i = 0; i < iterations; i++) {
     if (i % 2 === 0) {
-      pi = pi.plus(new Decimal(4).div(divisor));
+      pi = pi.plus(new Big(4).div(divisor));
     } else {
-      pi = pi.minus(new Decimal(4).div(divisor));
+      pi = pi.minus(new Big(4).div(divisor));
     }
     divisor = divisor.plus(2);
   }

@@ -3,44 +3,39 @@
 import { useState } from "react";
 import { CircumferenceDisplay } from "@/components/ui/CircumferenceDisplay";
 import { CircumferenceButton } from "@/components/ui/CircumferenceButton";
-import { SUN_RADIUS_KM, PUBLIC_API_KEY } from '@/utils/constants';
+import { useCircumference } from '@/hooks/useCircumference';
 
 export default function SunCalculator() {
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
-  const [piValue, setPiValue] = useState("3.14");
-  const [circumference, setCircumference] = useState<number>(2 * 3.14 * SUN_RADIUS_KM);
-  const [iterations, setIterations] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"efficient" | "optimized">("efficient");
 
-  const radius = SUN_RADIUS_KM;
+  // Custom hook for fetching and caching
+  const { data, mutate, fallbackCircumference } = useCircumference(mode);
+
+  // Derive display values
+  const piValue = data?.pi ?? '—';
+  const iterations = data?.currentIterations ?? 0;
+  const circumference = data?.circumference
+    ? parseFloat(data.circumference)
+    : fallbackCircumference;
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2500);
+    setTimeout(() => setToastMessage(""), 3000);
+  };
 
   const recalculateCircumference = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/circumference?mode=${mode}`, {
-        headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-
-      setPiValue(data.pi);
-      setIterations(data.currentIterations);
-      setCircumference(parseFloat(data.circumference));
-
-      setToastMessage(
-        `Successfully recalculated at iteration ${data.currentIterations}!`
-      );
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => setToastMessage(""), 3000);
+      await mutate();
+      showToastMessage(`Successfully recalculated at iteration ${iterations + 1}!`);
     } catch (err) {
       console.error(err);
-      setToastMessage("Failed to recalculate");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => setToastMessage(""), 3000);
+      showToastMessage("Failed to recalculate");
     } finally {
       setIsLoading(false);
     }
@@ -49,59 +44,18 @@ export default function SunCalculator() {
   const resetIterations = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`
-        /api/circumference?mode=${mode}&reset=true`, {
-        headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
-      });
-      if (!res.ok) throw new Error("Failed to reset");
-      const data = await res.json();
-
-      setPiValue(data.pi);
-      setIterations(data.currentIterations);
-      setCircumference(parseFloat(data.circumference));
-
-      setToastMessage("Iterations reset to 0");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => setToastMessage(""), 3000);
+      await mutate(true);
+      showToastMessage("Iterations reset to 0");
     } catch (err) {
       console.error(err);
-      setToastMessage("Failed to reset");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => setToastMessage(""), 3000);
+      showToastMessage("Failed to reset");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleModeChange = async (selectedMode: "efficient" | "optimized") => {
-    setIsLoading(true);
+  const handleModeChange = (selectedMode: "efficient" | "optimized") => {
     setMode(selectedMode);
-
-    try {
-      const resp = await fetch(
-        `/api/circumference?mode=${selectedMode}&debug=true`,
-        {
-          headers: { 'Authorization': `Bearer ${PUBLIC_API_KEY}` },
-        }
-      );
-      if (!resp.ok) throw new Error("Failed to fetch debug");
-      const data = (await resp.json()) as { store: Record<string, { pi: string; precision: number }> };
-
-      const entry = data.store[selectedMode];
-      setPiValue(entry.pi);
-      setIterations(entry.precision);
-      setCircumference(2 * parseFloat(entry.pi) * radius);
-    } catch (err) {
-      console.error(err);
-      setToastMessage("Failed to switch mode");
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
-      setTimeout(() => setToastMessage(""), 3000);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -153,7 +107,7 @@ export default function SunCalculator() {
         <div className="flex mb-3 w-full justify-around text-gray-700 text-sm">
           <div className="text-center">
             <p className="font-semibold text-teal-600">Radius</p>
-            <p className="font-bold">{radius.toLocaleString()} km</p>
+            <p className="font-bold">{fallbackCircumference.toLocaleString()} km</p>
           </div>
           <div className="text-center max-w-[120px]">
             <p className="font-semibold text-teal-600">Pi Value</p>
