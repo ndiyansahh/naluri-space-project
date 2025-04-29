@@ -1,20 +1,43 @@
 import useSWR from "swr";
-import { SUN_RADIUS_KM, PUBLIC_API_KEY } from "@/utils/constants";
+import { SUN_RADIUS_KM, API_KEY } from "@/utils/constants";
 
 const fetcher = async (url: string) => {
   try {
     const headers: HeadersInit = {};
-
-    if (PUBLIC_API_KEY && PUBLIC_API_KEY.length > 0) {
-      headers.Authorization = `Bearer ${PUBLIC_API_KEY}`;
+    
+    if (API_KEY.client && API_KEY.client.length > 0) {
+      headers.Authorization = `Bearer ${API_KEY.client}`;
+      console.log('Adding auth header - key configured');
+    } else {
+      console.log('No auth header - client key not configured');
     }
-
+    
     const res = await fetch(url, { headers });
+    
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`API Error (${res.status}):`, errorText);
-      throw new Error(`Network error: ${res.status}`);
+      // Detailed error handling
+      const status = res.status;
+      let errorMessage;
+      
+      try {
+        // Try to get JSON error message
+        const errorJson = await res.json();
+        errorMessage = errorJson.error || 'Unknown error';
+      } catch (e) {
+        // If not JSON, get text error
+        errorMessage = await res.text();
+      }
+      
+      console.error(`API Error (${status}):`, errorMessage);
+      
+      // Special case for auth errors
+      if (status === 401) {
+        console.error('Authentication failed');
+      }
+      
+      throw new Error(`Network error: ${status} - ${errorMessage}`);
     }
+    
     return res.json();
   } catch (err) {
     console.error("Fetch error:", err);
@@ -36,9 +59,10 @@ export function useCircumference(mode: "efficient" | "optimized") {
     dedupingInterval: 60000,
     revalidateOnFocus: false,
     onError: (err) => console.error("useCircumference error:", err),
+    errorRetryCount: 3,
+    errorRetryInterval: 1000
   });
 
-  // fallback circumference when no data yet
   const fallbackCircumference = 2 * 3.14 * SUN_RADIUS_KM;
 
   return {
