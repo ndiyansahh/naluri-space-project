@@ -1,15 +1,16 @@
 import useSWR from "swr";
-import { SUN_RADIUS_KM, API_KEY } from "@/utils/constants";
+import { SUN_RADIUS_KM, PUBLIC_API_KEY } from "@/utils/constants";
 
 const fetcher = async (url: string) => {
   try {
     const headers: HeadersInit = {};
     
-    if (API_KEY.client && API_KEY.client.length > 0) {
-      headers.Authorization = `Bearer ${API_KEY.client}`;
-      console.log('Adding auth header - key configured');
+    // Use the correct environment variable name
+    if (PUBLIC_API_KEY && PUBLIC_API_KEY.length > 0) {
+      headers.Authorization = `Bearer ${PUBLIC_API_KEY}`;
+      console.log('Adding auth header');
     } else {
-      console.log('No auth header - client key not configured');
+      console.log('No auth');
     }
     
     const res = await fetch(url, { headers });
