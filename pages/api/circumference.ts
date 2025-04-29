@@ -15,13 +15,14 @@ const redis = new Redis({
 type MemoryStoreEntry = { pi: Big; precision: number };
 
 type KVStoreEntry = { pi: string; precision: number };
-const initialStore: Record<'efficient' | 'optimized', MemoryStoreEntry> = {
-  efficient: { pi: new Big(3), precision: 0 },
-  optimized: { pi: new Big(3), precision: 0 },
+// Initial values used to initialize the memory store
+const initialValues = {
+  pi: new Big(3),
+  precision: 0
 };
 const memoryStore: Record<'efficient' | 'optimized', MemoryStoreEntry> = {
-  efficient: { pi: new Big(3), precision: 0 },
-  optimized: { pi: new Big(3), precision: 0 },
+  efficient: { pi: new Big(initialValues.pi), precision: initialValues.precision },
+  optimized: { pi: new Big(initialValues.pi), precision: initialValues.precision },
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -45,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         },
       });
-    } catch (err) {
+    } catch (_err) {
       return res.status(200).json({
         store: {
           efficient: {
