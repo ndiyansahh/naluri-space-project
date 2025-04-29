@@ -1,16 +1,31 @@
 import useSWR from "swr";
 import { SUN_RADIUS_KM, PUBLIC_API_KEY } from "@/utils/constants";
 
+// For debugging - log the public key availability in the browser
+if (typeof window !== 'undefined') {
+  console.log('useCircumference hook initialized');
+  console.log('PUBLIC_API_KEY available:', !!PUBLIC_API_KEY);
+  console.log('PUBLIC_API_KEY length:', PUBLIC_API_KEY ? PUBLIC_API_KEY.length : 0);
+}
+
 const fetcher = async (url: string) => {
   try {
     const headers: HeadersInit = {};
     
-    // Use the correct environment variable name
-    if (PUBLIC_API_KEY && PUBLIC_API_KEY.length > 0) {
-      headers.Authorization = `Bearer ${PUBLIC_API_KEY}`;
-      console.log('Adding auth header');
+    // IMPORTANT: Make sure we're using the correct environment variable
+    // and that it's available in the browser
+    const publicKey = PUBLIC_API_KEY || '';
+    
+    if (publicKey && publicKey.length > 0) {
+      headers.Authorization = `Bearer ${publicKey}`;
+      console.log('Adding auth header with length:', headers.Authorization.length);
     } else {
-      console.log('No auth');
+      console.log('No auth header available - PUBLIC_API_KEY not found');
+      console.log('Environment check:', { 
+        isServer: typeof window === 'undefined',
+        publicKeyAvailable: !!publicKey,
+        publicKeyLength: publicKey.length
+      });
     }
     
     const res = await fetch(url, { headers });

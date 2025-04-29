@@ -2,7 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import Big from 'big.js';
 import { calculatePiEfficient } from '@/utils/pi-efficient';
 import { calculatePiOptimized } from '@/utils/pi-optimized';
-import { SUN_RADIUS_KM, API_SECRET_KEY, shouldEnforceAuth } from '@/utils/constants';
+import { SUN_RADIUS_KM, API_SECRET_KEY, PUBLIC_API_KEY, shouldEnforceAuth } from '@/utils/constants';
+
+
 
 type StoreEntry = { pi: Big; precision: number };
 
@@ -14,7 +16,7 @@ const piStore: Record<'efficient' | 'optimized', StoreEntry> = {
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { mode: rawMode, reset, debug, increment } = req.query;
   
-  // Debug endpoint
+  // debug endpoint
   if (debug === 'true' && process.env.NODE_ENV !== 'production') {
     return res.status(200).json({
       store: {
@@ -30,16 +32,40 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 
-  // Special handling for direct API access
   const isDirectApiAccess = !req.headers.referer || !req.headers.referer.includes(req.headers.host as string);
+  
+  /*
+  // testing debug information when didnt get auth
+  console.log('Debug info:', {
+    isDirectApiAccess,
+    shouldEnforceAuth: shouldEnforceAuth(),
+    NODE_ENV: process.env.NODE_ENV,
+    TEST_AUTH: process.env.TEST_AUTH,
+    hasAPISecretKey: !!API_SECRET_KEY,
+    apiSecretKeyLength: API_SECRET_KEY ? API_SECRET_KEY.length : 0,
+    hasPublicAPIKey: !!PUBLIC_API_KEY,
+    publicAPIKeyLength: PUBLIC_API_KEY ? PUBLIC_API_KEY.length : 0,
+    authHeader: req.headers['authorization'] ? 'present' : 'missing',
+    authHeaderLength: req.headers['authorization'] ? req.headers['authorization'].length : 0
+  });
+  */
   
   // Only check auth for non-direct API access
   if (!isDirectApiAccess && shouldEnforceAuth()) {
     const authHeader = req.headers['authorization'];
-    const expectedAuth = `Bearer ${API_SECRET_KEY}`;
+    const expectedAuthPrivate = `Bearer ${API_SECRET_KEY}`;
+    const expectedAuthPublic = `Bearer ${PUBLIC_API_KEY}`;
+  
+    console.log('Auth check:', {
+      expectedPrivateLength: expectedAuthPrivate.length,
+      expectedPublicLength: expectedAuthPublic.length,
+      headerLength: authHeader ? authHeader.length : 0,
+      matchesPrivate: authHeader === expectedAuthPrivate,
+      matchesPublic: authHeader === expectedAuthPublic
+    });
     
-    if (!authHeader || authHeader !== expectedAuth) {
-      console.log(`Auth failed: Header ${authHeader ? 'present' : 'missing'}, server key ${API_SECRET_KEY ? 'configured' : 'not configured'}`);
+    if (!authHeader || (authHeader !== expectedAuthPrivate && authHeader !== expectedAuthPublic)) {
+      console.log(`Auth failed: Header ${authHeader ? 'present' : 'missing'}, server key ${API_SECRET_KEY ? 'configured' : 'not configured'}, public key ${PUBLIC_API_KEY ? 'configured' : 'not configured'}`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
   } else {
