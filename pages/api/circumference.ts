@@ -25,6 +25,7 @@ const memoryStore: Record<'efficient' | 'optimized', MemoryStoreEntry> = {
   optimized: { pi: new Big(initialValues.pi), precision: initialValues.precision },
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { mode: rawMode, reset, debug, increment } = req.query;
   
@@ -129,6 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         precision: store.precision
       });
     }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (err) {
     console.log('KV error, using memory store:', err);
   }
@@ -180,6 +182,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pi: store.pi.toString(),
         precision: store.precision
       });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (kvErr) {
       console.log('Redis update error:', kvErr);
     }
