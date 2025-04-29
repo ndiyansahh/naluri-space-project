@@ -1,20 +1,21 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import Big from 'big.js';
-import { calculatePiEfficient } from '@/utils/pi-efficient';
-import { calculatePiOptimized } from '@/utils/pi-optimized';
-import { SUN_RADIUS_KM, API_SECRET_KEY } from '@/utils/constants';
+import type { NextApiRequest, NextApiResponse } from "next";
+import Big from "big.js";
+import { calculatePiEfficient } from "@/utils/pi-efficient";
+import { calculatePiOptimized } from "@/utils/pi-optimized";
+import { SUN_RADIUS_KM, API_SECRET_KEY } from "@/utils/constants";
 
 type StoreEntry = { pi: Big; precision: number };
 
-const piStore: Record<'efficient' | 'optimized', StoreEntry> = {
-  efficient:  { pi: new Big(3), precision: 0 },
+const piStore: Record<"efficient" | "optimized", StoreEntry> = {
+  efficient: { pi: new Big(3), precision: 0 },
   optimized: { pi: new Big(3), precision: 0 },
 };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { mode: rawMode, reset, debug, increment } = req.query;
 
-  if (debug === 'true' && process.env.NODE_ENV !== 'production') {
+  // Debug endpoint for development
+  if (debug === "true" && process.env.NODE_ENV !== "production") {
     return res.status(200).json({
       store: {
         efficient: {
@@ -29,22 +30,36 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 
-  // 2) Autentikasi hanya di production
-  if (process.env.NODE_ENV === 'production') {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || authHeader !== `Bearer ${API_SECRET_KEY}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
+  if (process.env.NODE_ENV === "production" && API_SECRET_KEY) {
+    const authHeader = req.headers["authorization"];
+
+    if (API_SECRET_KEY && API_SECRET_KEY.length > 0) {
+      if (!authHeader || authHeader !== `Bearer ${API_SECRET_KEY}`) {
+        console.log(
+          `Auth failed: Expected ${
+            API_SECRET_KEY ? "set key" : "no key"
+          }, got ${
+            authHeader ? authHeader.substring(0, 10) + "..." : "no header"
+          }`
+        );
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+    }
+  } else {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Authentication bypassed in development environment");
     }
   }
 
-  const mode = rawMode === 'optimized' ? 'optimized' : 'efficient';
+  const mode = rawMode === "optimized" ? "optimized" : "efficient";
   if (rawMode && mode !== rawMode) {
     return res.status(400).json({ error: `Invalid mode: ${rawMode}` });
   }
 
   const store = piStore[mode];
 
-  if (reset === 'true') {
+  // Handle reset request
+  if (reset === "true") {
     store.precision = 0;
     store.pi = new Big(3);
     const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
@@ -56,7 +71,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 
-  if (increment === 'false') {
+  // Handle non-incremental requests
+  if (increment === "false") {
     const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
     return res.status(200).json({
       pi: store.pi.toFixed(store.precision),
@@ -66,21 +82,19 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
   }
 
+  // Handle increment request
   try {
     store.precision += 1;
     store.pi =
-      mode === 'optimized'
+      mode === "optimized"
         ? calculatePiOptimized(store.precision)
         : calculatePiEfficient(store.precision);
 
     const circumference = store.pi.mul(2).mul(new Big(SUN_RADIUS_KM));
 
-    res.setHeader(
-      'Cache-Control',
-      's-maxage=60, stale-while-revalidate=300'
-    );
+    // Set cache headers
+    res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
 
-    
     return res.status(200).json({
       pi: store.pi.toFixed(store.precision),
       currentIterations: store.precision,
@@ -88,7 +102,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       incremented: true,
     });
   } catch (err: unknown) {
-    console.error('[π API] error computing π:', err);
-    return res.status(500).json({ error: 'Failed to compute π' });
+    console.error("[π API] error computing π:", err);
+    return res.status(500).json({ error: "Failed to compute π" });
   }
 }

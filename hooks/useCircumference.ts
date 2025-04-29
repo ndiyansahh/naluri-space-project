@@ -1,19 +1,25 @@
 import useSWR from "swr";
-import { PUBLIC_API_KEY, SUN_RADIUS_KM } from "@/utils/constants";
+import { SUN_RADIUS_KM, PUBLIC_API_KEY } from "@/utils/constants";
 
 const fetcher = async (url: string) => {
-  const headers: HeadersInit = {};
-  if (PUBLIC_API_KEY) {
-    headers.Authorization = `Bearer ${PUBLIC_API_KEY}`;
+  try {
+    const headers: HeadersInit = {};
+
+    if (PUBLIC_API_KEY && PUBLIC_API_KEY.length > 0) {
+      headers.Authorization = `Bearer ${PUBLIC_API_KEY}`;
+    }
+
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`API Error (${res.status}):`, errorText);
+      throw new Error(`Network error: ${res.status}`);
+    }
+    return res.json();
+  } catch (err) {
+    console.error("Fetch error:", err);
+    throw err;
   }
-  
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error(`API Error (${res.status}):`, errorText);
-    throw new Error(`Network error: ${res.status}`);
-  }
-  return res.json();
 };
 
 interface CircumferenceData {
@@ -32,6 +38,7 @@ export function useCircumference(mode: "efficient" | "optimized") {
     onError: (err) => console.error("useCircumference error:", err),
   });
 
+  // fallback circumference when no data yet
   const fallbackCircumference = 2 * 3.14 * SUN_RADIUS_KM;
 
   return {
